@@ -81,6 +81,7 @@
                 "os": {
                     "type": "object",
                     "properties": {
+                        "firmware": {"$ref": "#/definitions/oids"},
                         "version": {"$ref": "#/definitions/oids"},
                         "hardware": {"$ref": "#/definitions/oids"},
                         "features": {"$ref": "#/definitions/oids"},
@@ -90,6 +91,9 @@
                         "long": {"$ref": "#/definitions/oid"},
                         "sysDescr_regex": {
                             "type": ["string", "array"]
+                        },
+                        "firmware_regex": {
+                            "type": "string"
                         },
                         "version_regex": {
                             "type": "string"
@@ -109,6 +113,9 @@
                         "location_regex": {
                             "type": "string"
                         },
+                        "firmware_template": {
+                            "type": "string"
+                        },
                         "version_template": {
                             "type": "string"
                         },
@@ -124,6 +131,7 @@
                         "location_template": {
                             "type": "string"
                         },
+                        "firmware_replace": {"$ref": "#/definitions/os_replacements"},
                         "version_replace": {"$ref": "#/definitions/os_replacements"},
                         "hardware_replace": {"$ref": "#/definitions/os_replacements"},
                         "features_replace": {"$ref": "#/definitions/os_replacements"},
@@ -539,6 +547,7 @@
                                             "sysName",
                                             "sysObjectID",
                                             "sysDescr",
+                                            "firmware",
                                             "version",
                                             "hardware",
                                             "features"

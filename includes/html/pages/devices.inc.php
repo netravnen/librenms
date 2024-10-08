@@ -158,6 +158,10 @@ if ($format == 'graph') {
         $where .= ' AND os = ?';
         $sql_param[] = $vars['os'];
     }
+    if (! empty($vars['firmware'])) {
+        $where .= ' AND firmware = ?';
+        $sql_param[] = $vars['firmware'];
+    }
     if (! empty($vars['version'])) {
         $where .= ' AND version = ?';
         $sql_param[] = $vars['version'];
@@ -367,6 +371,7 @@ if ($format == 'graph') {
                     format: '<?php echo htmlspecialchars($vars['format']); ?>',
                     searchPhrase: '<?php echo htmlspecialchars($vars['searchquery'] ?? ''); ?>',
                     os: '<?php echo htmlspecialchars($vars['os'] ?? ''); ?>',
+                    firmware: '<?php echo htmlspecialchars($vars['firmware'] ?? ''); ?>',
                     version: '<?php echo htmlspecialchars($vars['version'] ?? ''); ?>',
                     hardware: '<?php echo htmlspecialchars($vars['hardware'] ?? ''); ?>',
                     features: '<?php echo htmlspecialchars($vars['features'] ?? ''); ?>',
@@ -396,6 +401,7 @@ if ($format == 'graph') {
             "</div>" +
             "<div class='form-group'><?php echo $state_selection ?></div>" +
             "<div class='form-group'><select name='os' id='os' class='form-control'></select></div>" +
+            "<div class='form-group'><select name='firmware' id='firmware' class='form-control'></select></div>" +
             "<div class='form-group'><select name='version' id='version' class='form-control'></select></div>" +
             "<div class='form-group'><select name='hardware' id='hardware' class='form-control'></select></div>" +
             "<div class='form-group'><select name='features' id='features' class='form-control'></select></div>" +
@@ -414,6 +420,7 @@ if ($format == 'graph') {
         init_select2("#hardware", "device-field", {field: 'hardware'}, <?php echo $hardware_selected ?>, 'All Platforms');
         init_select2("#os", "device-field", {field: 'os'}, <?php echo $os_selected ?>, 'All OS');
         init_select2("#device-type", "device-field", {field: 'type'}, <?php echo $type_selected ?>, 'All Device Types');
+        init_select2("#firmware", "device-field", {field: 'firmware'}, <?php echo $firmware_selected ?>, 'All Firmwares');
         init_select2("#version", "device-field", {field: 'version'}, <?php echo $version_selected ?>, 'All Versions');
         init_select2("#location", "location", {}, <?php echo $location_selected ?>, 'All Locations');
     </script>
