@@ -29,6 +29,7 @@ namespace LibreNMS\Tests\Feature;
 use App\Models\Bill;
 use App\Models\Component;
 use App\Models\Device;
+use App\Models\Sensor;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Gate;
@@ -161,5 +162,44 @@ final class ApiWriteAuthorizationTest extends DBTestCase
 
         $this->json('DELETE', "/api/v0/bills/$own->bill_id", [], $headers)->assertStatus(200);
         $this->assertFalse(Bill::whereKey($own->bill_id)->exists());
+    }
+
+    public function testSensorLimitWritesAreScopedToAccessibleDevices(): void
+    {
+        $user = $this->limitedUser(['device.update', 'sensor.update']);
+        $headers = $this->headers($user);
+        $own = Sensor::factory()->create(['device_id' => $this->accessible->device_id, 'sensor_class' => 'temperature', 'sensor_limit' => 60, 'sensor_custom' => 'No']);
+        $foreign = Sensor::factory()->create(['device_id' => $this->other->device_id, 'sensor_class' => 'temperature', 'sensor_limit' => 60, 'sensor_custom' => 'No']);
+
+        // foreign sensor addressed through its own device is denied
+        $this->json('PATCH', "/api/v0/devices/{$this->other->hostname}/sensors/$foreign->sensor_id", ['sensor_limit' => 99], $headers)->assertStatus(403);
+        // foreign sensor addressed through an accessible device is not found
+        $this->json('PATCH', "/api/v0/devices/{$this->accessible->hostname}/sensors/$foreign->sensor_id", ['sensor_limit' => 99], $headers)->assertStatus(404);
+        $this->assertEquals(60, $foreign->refresh()->sensor_limit);
+
+        // unknown and invalid fields are refused, nothing changes
+        $this->json('PATCH', "/api/v0/devices/{$this->accessible->hostname}/sensors/$own->sensor_id", ['sensor_limt' => 99], $headers)->assertStatus(422);
+        $this->json('PATCH', "/api/v0/devices/{$this->accessible->hostname}/sensors/$own->sensor_id", ['sensor_limit' => 'hot'], $headers)->assertStatus(422);
+        $this->json('PATCH', "/api/v0/devices/{$this->accessible->hostname}/sensors/$own->sensor_id", [], $headers)->assertStatus(400);
+        $this->assertEquals(60, $own->refresh()->sensor_limit);
+
+        // a limit set through the API is custom, so discovery keeps it
+        $this->json('PATCH', "/api/v0/devices/{$this->accessible->hostname}/sensors/$own->sensor_id", ['sensor_limit' => 80, 'sensor_limit_warn' => 70], $headers)
+            ->assertStatus(200)
+            ->assertJsonPath('sensor.0.sensor_limit', 80)
+            ->assertJsonPath('sensor.0.sensor_custom', 'Yes');
+        $own->refresh();
+        $this->assertEquals(80, $own->sensor_limit);
+        $this->assertEquals(70, $own->sensor_limit_warn);
+        $this->assertSame('Yes', $own->sensor_custom);
+    }
+
+    public function testSensorLimitWritesNeedTheSensorPermission(): void
+    {
+        $user = $this->limitedUser(['device.update']);
+        $sensor = Sensor::factory()->create(['device_id' => $this->accessible->device_id, 'sensor_class' => 'temperature', 'sensor_limit' => 60, 'sensor_custom' => 'No']);
+
+        $this->json('PATCH', "/api/v0/devices/{$this->accessible->hostname}/sensors/$sensor->sensor_id", ['sensor_limit' => 99], $this->headers($user))->assertStatus(403);
+        $this->assertEquals(60, $sensor->refresh()->sensor_limit);
     }
 }

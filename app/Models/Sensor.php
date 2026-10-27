@@ -24,6 +24,18 @@ class Sensor extends SensorModel implements HasSyncProtectedAttributes, Keyable
 {
     use HasFactory;
 
+    /**
+     * Validation rules for a user edit of a sensor, shared by the web UI and the API.
+     */
+    public const USER_EDIT_RULES = [
+        'sensor_limit' => 'sometimes|nullable|numeric',
+        'sensor_limit_warn' => 'sometimes|nullable|numeric',
+        'sensor_limit_low_warn' => 'sometimes|nullable|numeric',
+        'sensor_limit_low' => 'sometimes|nullable|numeric',
+        'sensor_alert' => 'sometimes|boolean',
+        'sensor_custom' => 'sometimes|in:No',
+    ];
+
     public $timestamps = false;
     protected $primaryKey = 'sensor_id';
     protected $fillable = [
@@ -128,6 +140,30 @@ class Sensor extends SensorModel implements HasSyncProtectedAttributes, Keyable
             'dbm' => round($value, 3) . ' ' . $this->unit(),
             default => $value . ' ' . $this->unit(),
         };
+    }
+
+    /**
+     * Apply a validated user edit (see USER_EDIT_RULES) and save it.
+     * Limits set by a user are marked custom so discovery does not overwrite them.
+     * sensor_custom = No hands the limits back to discovery.
+     */
+    public function applyUserEdit(array $validated): bool
+    {
+        $this->forceFill($validated);
+
+        if (isset($validated['sensor_custom'])) {
+            // leave Reset for discovery, SensorObserver recalculates limits and clears the custom flag then
+            $this->sensor_custom = 'Reset';
+
+            return $this->saveQuietly();
+        }
+
+        if (array_intersect_key($validated, array_flip(self::LIMITS))) {
+            // mark limits as custom so discovery does not overwrite them
+            $this->sensor_custom = 'Yes';
+        }
+
+        return $this->save();
     }
 
     public function currentTranslation(): ?StateTranslation

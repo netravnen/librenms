@@ -62,14 +62,7 @@ class EditHealthController
             return $this->unauthorized();
         }
 
-        $validated = $request->validate([
-            'sensor_limit' => 'sometimes|nullable|numeric',
-            'sensor_limit_warn' => 'sometimes|nullable|numeric',
-            'sensor_limit_low_warn' => 'sometimes|nullable|numeric',
-            'sensor_limit_low' => 'sometimes|nullable|numeric',
-            'sensor_alert' => 'sometimes|boolean',
-            'sensor_custom' => 'sometimes|in:No',
-        ]);
+        $validated = $request->validate(Sensor::USER_EDIT_RULES);
 
         if (empty($validated)) {
             return response()->json([
@@ -78,21 +71,7 @@ class EditHealthController
             ], 422);
         }
 
-        $sensor->forceFill($validated);
-
-        if (isset($validated['sensor_custom'])) {
-            // leave Reset for discovery, SensorObserver recalculates limits and clears the custom flag then
-            $sensor->sensor_custom = 'Reset';
-            $saved = $sensor->saveQuietly();
-        } else {
-            if (array_intersect_key($validated, array_flip(Sensor::LIMITS))) {
-                // mark limits as custom so discovery does not overwrite them
-                $sensor->sensor_custom = 'Yes';
-            }
-            $saved = $sensor->save();
-        }
-
-        if ($saved) {
+        if ($sensor->applyUserEdit($validated)) {
             return response()->json([
                 'status' => 'ok',
                 'message' => __('Sensor updated'),

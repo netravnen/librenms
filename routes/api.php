@@ -171,6 +171,7 @@ Route::prefix('v0')->group(function (): void {
             Route::post('{hostname}/maintenance', [App\Api\Controllers\LegacyApiController::class, 'maintenance_device'])->name('maintenance_device');
             Route::post('{id}/parents', [App\Api\Controllers\LegacyApiController::class, 'add_parents_to_host'])->name('add_parents_to_host');
             Route::delete('{id}/parents', [App\Api\Controllers\LegacyApiController::class, 'del_parents_from_host'])->name('del_parents_from_host');
+            Route::patch('{hostname}/sensors/{sensor_id}', [App\Api\Controllers\LegacyApiController::class, 'update_device_sensor'])->name('update_device_sensor')->whereNumber('sensor_id');
         });
 
         Route::middleware('can:update,App\Models\Port')->group(function (): void {
