@@ -1429,6 +1429,72 @@ function update_device_port_notes(Illuminate\Http\Request $request): JsonRespons
     }
 }
 
+function update_device_sensor(Illuminate\Http\Request $request): JsonResponse
+{
+    $hostname = $request->route('hostname');
+    $sensor_id = $request->route('sensor_id');
+    $device = DeviceCache::get($hostname);
+
+    if (! $device->exists) {
+        return api_error(404, "Device $hostname not found");
+    }
+
+    if ($request->user()->cannot('update', $device)) {
+        return api_error(403, 'Insufficient permissions to update this device');
+    }
+
+    $sensor = $device->sensors()->where('sensor_id', $sensor_id)->first();
+    if ($sensor === null) {
+        return api_error(404, "Sensor $sensor_id not found on device $hostname");
+    }
+
+    if ($request->user()->cannot('update', $sensor)) {
+        return api_error(403, 'Insufficient permissions to update this sensor');
+    }
+
+    $data = json_decode($request->getContent(), true);
+    if (json_last_error() || ! is_array($data)) {
+        return api_error(400, "We couldn't parse the provided json. " . json_last_error_msg());
+    }
+
+    // refuse unknown fields: ignoring a misspelt limit would report success and change nothing
+    $unknown = array_diff(array_keys($data), array_keys(Sensor::USER_EDIT_RULES));
+    if ($unknown) {
+        return api_error(422, 'Unknown sensor field(s): ' . implode(', ', $unknown));
+    }
+
+    $v = Validator::make($data, Sensor::USER_EDIT_RULES);
+    if ($v->fails()) {
+        return api_error(422, $v->messages());
+    }
+
+    $validated = $v->validated();
+    if (empty($validated)) {
+        return api_error(400, 'No sensor field to update has been supplied');
+    }
+
+    if (! $sensor->applyUserEdit($validated)) {
+        return api_error(500, "Sensor $sensor_id could not be updated");
+    }
+
+    $changes = collect($validated)->map(fn ($value, $field) => $field . '=' . json_encode($value))->implode(', ');
+    Eventlog::log("Sensor $sensor->sensor_descr ($sensor->sensor_class) updated via API: $changes", $device->device_id, 'sensor', Severity::Notice, $sensor->sensor_id);
+
+    return api_success([$sensor->refresh()->only([
+        'sensor_id',
+        'device_id',
+        'sensor_class',
+        'sensor_descr',
+        'sensor_current',
+        'sensor_limit',
+        'sensor_limit_warn',
+        'sensor_limit_low_warn',
+        'sensor_limit_low',
+        'sensor_alert',
+        'sensor_custom',
+    ])], 'sensor', 'Sensor updated');
+}
+
 function list_alert_rules(Illuminate\Http\Request $request)
 {
     $id = $request->route('id');

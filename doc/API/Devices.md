@@ -1656,6 +1656,66 @@ Output:
 ]
 ```
 
+### `update_device_sensor`
+
+Update the alert limits of one health sensor, as the device's
+Edit > Health page does. Limits set this way are marked custom, so
+discovery does not overwrite them.
+
+Route: `/api/v0/devices/:hostname/sensors/:sensor_id`
+
+- hostname can be either the device hostname or id
+- sensor_id is the sensor's unique id (int), as listed by `list_sensors`
+  or `list_available_health_graphs`. It must belong to the device.
+
+Input (JSON), any of:
+
+- sensor_limit: High critical limit (number, or null to clear).
+- sensor_limit_warn: High warning limit (number, or null to clear).
+- sensor_limit_low_warn: Low warning limit (number, or null to clear).
+- sensor_limit_low: Low critical limit (number, or null to clear).
+- sensor_alert: Whether the sensor raises alerts (true or false).
+- sensor_custom: Only `"No"`. Removes the custom limits; the next
+  discovery recalculates them.
+
+Any other field is refused with a 422, so a misspelt limit is not
+silently ignored. The change is recorded in the device eventlog.
+
+Examples:
+
+```curl
+curl -X PATCH -d '{"sensor_limit_warn": 70, "sensor_limit": 80}' -H 'X-Auth-Token: YOURAPITOKENHERE' https://foo.example/api/v0/devices/localhost/sensors/211
+```
+
+Output:
+
+```json
+{
+    "status": "ok",
+    "sensor": [
+        {
+            "sensor_id": 211,
+            "device_id": 1,
+            "sensor_class": "temperature",
+            "sensor_descr": "temp1",
+            "sensor_current": 45,
+            "sensor_limit": 80,
+            "sensor_limit_warn": 70,
+            "sensor_limit_low_warn": null,
+            "sensor_limit_low": 35,
+            "sensor_alert": 1,
+            "sensor_custom": "Yes"
+        }
+    ],
+    "message": "Sensor updated",
+    "count": 1
+}
+```
+
+```curl
+curl -X PATCH -d '{"sensor_custom": "No"}' -H 'X-Auth-Token: YOURAPITOKENHERE' https://foo.example/api/v0/devices/localhost/sensors/211
+```
+
 ### `rename_device`
 
 Rename device.
